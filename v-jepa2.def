@@ -1,0 +1,54 @@
+Bootstrap: docker
+From: dockerhub-mirror3.rrze.uni-erlangen.de/nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
+
+
+%files
+    . /
+
+
+%environment
+    # certificates
+    export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+    export REQUESTS_CA_BUNDLE=$SSL_CERT_FILE
+    export CURL_CA_BUNDLE=$SSL_CERT_FILE
+
+    # conda env
+    export PATH=/opt/conda/envs/vjepa-312/bin:$PATH
+    export CONDA_DEFAULT_ENV=vjepa-312
+
+    # project paths
+    export TORCH_HOME=/hnvme/workspace/v106be10-vjepa2/.cache
+
+
+%post
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        ffmpeg \
+        git \
+        libgl1 \
+        libglib2.0-0 \
+        tree \
+        wget \
+        ca-certificates && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+    wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh
+    bash /tmp/miniforge.sh -b -p /opt/conda
+    rm /tmp/miniforge.sh
+
+    . /opt/conda/etc/profile.d/conda.sh
+    conda create -y -n vjepa-312 python=3.12
+    conda activate vjepa-312
+
+    # install dependencies
+    pip install --upgrade pip
+    pip install -e .
+
+    # clean up
+    conda clean --all -y
+    rm -rf /root/.cache /opt/conda/pkgs/*
+
+
+%runscript
+    exec "$@"
