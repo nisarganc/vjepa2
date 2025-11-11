@@ -63,7 +63,6 @@ def loss_fn(z, h):
     loss = torch.mean(loss, dim=[1, 2])
     return loss.tolist()
 
-
 if __name__ == "__main__":
     
     # Load robot trajectory
@@ -188,5 +187,6 @@ if __name__ == "__main__":
         s_n = states[:, :1]
         print(f"Starting planning using Cross-Entropy Method...")
         actions = world_model.infer_next_action(z_n, s_n, z_goal).cpu().numpy()
-
-    print(f"Actions returned by planning with CEM (x,y,z) = ({actions[0, 0]:.2f},{actions[0, 1]:.2f} {actions[0, 2]:.2f})")
+    
+    print(f"Actions returned by planning with CEM: {actions}")
+    # print(f"Actions returned by planning with CEM (x,y,z) = ({actions[0, 0]:.2f},{actions[0, 1]:.2f} {actions[0, 2]:.2f})")
