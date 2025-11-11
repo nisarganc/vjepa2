@@ -3,7 +3,7 @@ import sys
 sys.path.insert(0, "..")
 
 import numpy as np
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 import torch
 from torch.nn import functional as F
@@ -14,54 +14,54 @@ from utils.mpc_utils import (
     poses_to_diff
 )
 
-# def forward_target(c, normalize_reps=True):
-#     B, C, T, H, W = c.size()
-#     c = c.permute(0, 2, 1, 3, 4).flatten(0, 1).unsqueeze(2).repeat(1, 1, 2, 1, 1)
-#     h = encoder(c)
-#     h = h.view(B, T, -1, h.size(-1)).flatten(1, 2)
-#     if normalize_reps:
-#         h = F.layer_norm(h, (h.size(-1),))
-#     return h
+def forward_target(c, normalize_reps=True):
+    B, C, T, H, W = c.size()
+    c = c.permute(0, 2, 1, 3, 4).flatten(0, 1).unsqueeze(2).repeat(1, 1, 2, 1, 1)
+    h = encoder(c)
+    h = h.view(B, T, -1, h.size(-1)).flatten(1, 2)
+    if normalize_reps:
+        h = F.layer_norm(h, (h.size(-1),))
+    return h
 
-# def forward_actions(z, nsamples, grid_size=0.075, normalize_reps=True, action_repeat=1):
+def forward_actions(z, nsamples, grid_size=0.075, normalize_reps=True, action_repeat=1):
 
-#     def make_action_grid(grid_size=grid_size):
-#         action_samples = []
-#         for da in np.linspace(-grid_size, grid_size, nsamples):
-#             for db in np.linspace(-grid_size, grid_size, nsamples):
-#                 for dc in np.linspace(-grid_size, grid_size, nsamples):
-#                     action_samples += [torch.tensor([da, db, dc, 0, 0, 0, 0], device=z.device, dtype=z.dtype)]
-#         return torch.stack(action_samples, dim=0).unsqueeze(1)
+    def make_action_grid(grid_size=grid_size):
+        action_samples = []
+        for da in np.linspace(-grid_size, grid_size, nsamples):
+            for db in np.linspace(-grid_size, grid_size, nsamples):
+                for dc in np.linspace(-grid_size, grid_size, nsamples):
+                    action_samples += [torch.tensor([da, db, dc, 0, 0, 0, 0], device=z.device, dtype=z.dtype)]
+        return torch.stack(action_samples, dim=0).unsqueeze(1)
 
-#     # Sample grid of actions
-#     action_samples = make_action_grid()
-#     print(f"Sampled grid of actions; num actions = {len(action_samples)}")
+    # Sample grid of actions
+    action_samples = make_action_grid()
+    print(f"Sampled grid of actions; num actions = {len(action_samples)}")
 
-#     def step_predictor(_z, _a, _s):
-#         _z = predictor(_z, _a, _s)[:, -tokens_per_frame:]
-#         if normalize_reps:
-#             _z = F.layer_norm(_z, (_z.size(-1),))
-#         _s = compute_new_pose(_s[:, -1:], _a[:, -1:])
-#         return _z, _s
+    def step_predictor(_z, _a, _s):
+        _z = predictor(_z, _a, _s)[:, -tokens_per_frame:]
+        if normalize_reps:
+            _z = F.layer_norm(_z, (_z.size(-1),))
+        _s = compute_new_pose(_s[:, -1:], _a[:, -1:])
+        return _z, _s
 
-#     # Context frame rep and context pose
-#     z_hat = z[:, :tokens_per_frame].repeat(int(nsamples**3), 1, 1)  # [S, N, D]
-#     s_hat = states[:, :1].repeat((int(nsamples**3), 1, 1))  # [S, 1, 7]
-#     a_hat = action_samples  # [S, 1, 7]
+    # Context frame rep and context pose
+    z_hat = z[:, :tokens_per_frame].repeat(int(nsamples**3), 1, 1)  # [S, N, D]
+    s_hat = states[:, :1].repeat((int(nsamples**3), 1, 1))  # [S, 1, 7]
+    a_hat = action_samples  # [S, 1, 7]
 
-#     for _ in range(action_repeat):
-#         _z, _s = step_predictor(z_hat, a_hat, s_hat)
-#         z_hat = torch.cat([z_hat, _z], dim=1)
-#         s_hat = torch.cat([s_hat, _s], dim=1)
-#         a_hat = torch.cat([a_hat, action_samples], dim=1)
+    for _ in range(action_repeat):
+        _z, _s = step_predictor(z_hat, a_hat, s_hat)
+        z_hat = torch.cat([z_hat, _z], dim=1)
+        s_hat = torch.cat([s_hat, _s], dim=1)
+        a_hat = torch.cat([a_hat, action_samples], dim=1)
 
-#     return z_hat, s_hat, a_hat
+    return z_hat, s_hat, a_hat
 
-# def loss_fn(z, h):
-#     z, h = z[:, -tokens_per_frame:], h[:, -tokens_per_frame:]
-#     loss = torch.abs(z - h)  # [B, N, D]
-#     loss = torch.mean(loss, dim=[1, 2])
-#     return loss.tolist()
+def loss_fn(z, h):
+    z, h = z[:, -tokens_per_frame:], h[:, -tokens_per_frame:]
+    loss = torch.abs(z - h)  # [B, N, D]
+    loss = torch.mean(loss, dim=[1, 2])
+    return loss.tolist()
 
 
 if __name__ == "__main__":
@@ -78,25 +78,24 @@ if __name__ == "__main__":
 
     np_actions = np.expand_dims(poses_to_diff(np_states[0, 0], 
                                             np_states[0, 1]), 
-                                            axis=(0, 1)) # state2 - state1
+                                            axis=(0, 1)) # action = state2 - state1
 
-    # # Visualize loaded video frames from traj
-    # T = len(np_clips[0]) # 2
-    # plt.figure(figsize=(20, 3))
-    # _ = plt.imshow(np.transpose(np_clips[0], (1, 0, 2, 3)).reshape(256, 256 * T, 3))
+    # Visualize loaded video frames from traj
+    T = len(np_clips[0]) # 2
+    plt.figure(figsize=(20, 3))
+    _ = plt.imshow(np.transpose(np_clips[0], (1, 0, 2, 3)).reshape(256, 256 * T, 3))
     # plt.savefig("loaded_trajectory_frames.png")
 
 
     # Initialize VJEPA 2-AC model
-    os.environ["TORCH_HOME"] = "~/vjepa2/checkpoints/"
     encoder, predictor = torch.hub.load("../", # root of the source code 
                                         "vjepa2_ac_vit_giant", 
                                         source="local",
-                                        pretrained=True)
+                                        pretrained=True) 
+    # encoder -> VisionTransformer
+    # predictor -> VisionTransformerPredictorAC
 
-    '''
-
-    # Initialize transform
+    # Initialize transform -> app.vjepa_droid.transforms
     crop_size = 256
     tokens_per_frame = int((crop_size // encoder.patch_size) ** 2)
     transform = make_transforms(
@@ -110,9 +109,9 @@ if __name__ == "__main__":
     )
 
     # Convert trajectory to torch tensors
-    clips = transform(np_clips[0]).unsqueeze(0)
-    states = torch.tensor(np_states)
-    actions = torch.tensor(np_actions)
+    clips = transform(np_clips[0]).unsqueeze(0) # [1, 3, 2, 224, 224]
+    states = torch.tensor(np_states) # [1, 2, 7]
+    actions = torch.tensor(np_actions) # [1, 1, 7]
     print(f"clips: {clips.shape}; states: {states.shape}; actions: {actions.shape}")
 
     # Compute energy for cartesian action grid of size (nsample x nsamples x nsamples)
@@ -123,9 +122,7 @@ if __name__ == "__main__":
         z_hat, s_hat, a_hat = forward_actions(h, nsamples=nsamples, grid_size=grid_size)
         loss = loss_fn(z_hat, h)  # jepa prediction loss
 
-
     # Plot the energy
-
     plot_data = []
     for b, v in enumerate(loss):
         plot_data.append((
@@ -156,7 +153,8 @@ if __name__ == "__main__":
     print(f"Ground truth action (x,y,z) = ({gt_x:.2f},{gt_y:.2f},{gt_z:.2f})")
     _ = plt.imshow(heatmap.T, origin="lower", extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], cmap="viridis")
     _ = plt.colorbar()
-
+    # plt.savefig("energy_landscape_vjepa2_ac.png")
+    # plt.close()
 
     # Compute the optimal action using MPC
     from utils.world_model_wrapper import WorldModel
@@ -192,4 +190,3 @@ if __name__ == "__main__":
         actions = world_model.infer_next_action(z_n, s_n, z_goal).cpu().numpy()
 
     print(f"Actions returned by planning with CEM (x,y,z) = ({actions[0, 0]:.2f},{actions[0, 1]:.2f} {actions[0, 2]:.2f})")
-    '''
