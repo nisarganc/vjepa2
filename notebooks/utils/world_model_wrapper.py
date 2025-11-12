@@ -39,6 +39,7 @@ class WorldModel(object):
         self.device = device
         self.mpc_args = mpc_args
 
+    # LATENT SPACE ENCODER
     def encode(self, image):
         clip = np.expand_dims(image, axis=0)
         clip = self.transform(clip)[None, :]
@@ -51,11 +52,13 @@ class WorldModel(object):
             h = F.layer_norm(h, (h.size(-1),))
         return h
 
+    # MODEL-BASED PLANNING WITH CEM IN LATENT SPACE
     def infer_next_action(self, rep, pose, goal_rep, close_gripper=None):
 
         def step_predictor(reps, actions, poses):
             B, T, N_T, D = reps.size()
             reps = reps.flatten(1, 2)
+            # new representation prediction from predictor
             next_rep = self.predictor(reps, actions, poses)[:, -self.tokens_per_frame :]
             if self.normalize_reps:
                 next_rep = F.layer_norm(next_rep, (next_rep.size(-1),))
