@@ -14,6 +14,10 @@ from utils.mpc_utils import (
     poses_to_diff
 )
 
+# suppress warnings
+import warnings
+warnings.filterwarnings("ignore")
+
 def forward_target(c, normalize_reps=True):
     B, C, T, H, W = c.size()
     c = c.permute(0, 2, 1, 3, 4).flatten(0, 1).unsqueeze(2).repeat(1, 1, 2, 1, 1)
@@ -94,7 +98,7 @@ if __name__ == "__main__":
     T = len(np_clips[0]) # 2
     plt.figure(figsize=(20, 3))
     _ = plt.imshow(np.transpose(np_clips[0], (1, 0, 2, 3)).reshape(256, 256 * T, 3))
-    plt.savefig("loaded_trajectory_frames.png")
+    # plt.savefig("loaded_trajectory_frames.png")
 
 
     # Initialize VJEPA 2-AC model
@@ -167,8 +171,8 @@ if __name__ == "__main__":
     print(f"Ground truth action (x,y,z) = ({gt_x:.2f},{gt_y:.2f},{gt_z:.2f})")
     _ = plt.imshow(heatmap.T, origin="lower", extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], cmap="viridis")
     _ = plt.colorbar()
-    plt.savefig("energy_landscape_vjepa2_ac.png")
-    plt.close()
+    # plt.savefig("energy_landscape_vjepa2_ac.png")
+    # plt.close()
 
     # Compute the optimal action using MPC
     from utils.world_model_wrapper import WorldModel

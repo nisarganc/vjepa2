@@ -44,6 +44,8 @@ From: dockerhub-mirror3.rrze.uni-erlangen.de/nvidia/cuda:12.8.1-cudnn-devel-ubun
     # install dependencies
     pip install --upgrade pip
     pip install -e .
+    pip install pyroboplan
+    pip install "git+ssh://git@github.com/utn-air/simple_move.git"
 
     # clean up
     conda clean --all -y
