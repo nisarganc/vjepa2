@@ -181,7 +181,7 @@ if __name__ == "__main__":
         # Doing very few CEM iterations with very few samples just to run efficiently on CPU...
         # ... increase cem_steps and samples for more accurate optimization of energy landscape
         mpc_args={
-            "rollout": 2,
+            "rollout": 2, # ROLL-OUT HORIZON
             "samples": 25,
             "topk": 10,
             "cem_steps": 2,
@@ -197,10 +197,15 @@ if __name__ == "__main__":
     )
 
     with torch.no_grad():
-        h = forward_target(clips)
-        z_n, z_goal = h[:, :tokens_per_frame], h[:, -tokens_per_frame:]
-        s_n = states[:, :1]
+        # Pre-trained VJEPA 2 ENCODER representation of current frame and goal frame
+        h = forward_target(clips) # [1, 512, 1408]
+        z_n, z_goal = h[:, :tokens_per_frame], h[:, -tokens_per_frame:] # [1, 256, 1408], [1, 256, 1408]
+
+        # current observed state
+        s_n = states[:, :1] # [1, 1, 7]
         print(f"Starting planning using Cross-Entropy Method...")
+
+        # Action conditioned predictor and zero-shot action inference with CEM
         actions = world_model.infer_next_action(z_n, s_n, z_goal).cpu().numpy()
     
     print(f"Actions returned by planning with CEM: {actions}")

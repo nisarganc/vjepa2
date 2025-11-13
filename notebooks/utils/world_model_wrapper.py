@@ -62,7 +62,7 @@ class WorldModel(object):
             next_rep = self.predictor(reps, actions, poses)[:, -self.tokens_per_frame :]
             if self.normalize_reps:
                 next_rep = F.layer_norm(next_rep, (next_rep.size(-1),))
-            next_rep = next_rep.view(B, 1, N_T, D)
+            next_rep = next_rep.view(B, 1, N_T, D) # [25, 1, 256, 1408]
             next_pose = compute_new_pose(poses[:, -1:], actions[:, -1:])
             return next_rep, next_pose
 

@@ -25,144 +25,6 @@ def round_small_elements(tensor, threshold):
     return new_tensor
 
 
-def cem(
-    context_frame,
-    context_pose,
-    goal_frame,
-    world_model,
-    rollout=1,
-    cem_steps=100,
-    momentum_mean=0.25,
-    momentum_std=0.95,
-    momentum_mean_gripper=0.15,
-    momentum_std_gripper=0.15,
-    samples=100,
-    topk=10,
-    verbose=False,
-    maxnorm=0.05,
-    axis={},
-    objective=l1,
-    close_gripper=None,
-):
-    """
-    :param context_frame: [B=1, T=1, HW, D]
-    :param goal_frame: [B=1, T=1, HW, D]
-    :param world_model: f(context_frame, action) -> next_frame [B, 1, HW, D]
-    :return: [B=1, rollout, 7] an action trajectory over rollout horizon
-
-    Cross-Entropy Method
-    -----------------------
-    1. for rollout horizon:
-    1.1. sample several actions
-    1.2. compute next states using WM
-    3. compute similarity of final states to goal_frames
-    4. select topk samples and update mean and std using topk action trajs
-    5. choose final action to be mean of distribution
-    """
-    context_frame = context_frame.repeat(samples, 1, 1, 1)  # Reshape to [S, 1, HW, D]
-    goal_frame = goal_frame.repeat(samples, 1, 1, 1)  # Reshape to [S, 1, HW, D]
-    context_pose = context_pose.repeat(samples, 1, 1)  # Reshape to [S, 1, 7]
-
-    # Current estimate of the mean/std of distribution over action trajectories
-    mean = torch.cat(
-        [
-            torch.zeros((rollout, 3), device=context_frame.device),
-            torch.zeros((rollout, 1), device=context_frame.device),
-        ],
-        dim=-1,
-    )
-
-    std = torch.cat(
-        [
-            torch.ones((rollout, 3), device=context_frame.device) * maxnorm,
-            torch.ones((rollout, 1), device=context_frame.device),
-        ],
-        dim=-1,
-    )
-
-    for ax in axis.keys():
-        mean[:, ax] = axis[ax]
-
-    def sample_action_traj():
-        """Sample several action trajectories"""
-        action_traj, frame_traj, pose_traj = None, context_frame, context_pose
-
-        for h in range(rollout):
-
-            # -- sample new action
-            action_samples = torch.randn(samples, mean.size(1), device=mean.device) * std[h] + mean[h]
-            action_samples[:, :3] = torch.clip(action_samples[:, :3], min=-maxnorm, max=maxnorm)
-            action_samples[:, -1:] = torch.clip(action_samples[:, -1:], min=-0.75, max=0.75)
-            for ax in axis.keys():
-                action_samples[:, ax] = axis[ax]
-            action_samples = torch.cat(
-                [
-                    action_samples[:, :3],
-                    torch.zeros((len(action_samples), 3), device=mean.device),
-                    action_samples[:, -1:],
-                ],
-                dim=-1,
-            )[:, None]
-            if close_gripper is not None and h >= close_gripper:
-                action_samples[:, :, -1] = 1.0
-
-            action_traj = (
-                torch.cat([action_traj, action_samples], dim=1) if action_traj is not None else action_samples
-            )
-
-            # -- compute next state
-            next_frame, next_pose = world_model(frame_traj, action_traj, pose_traj)
-            frame_traj = torch.cat([frame_traj, next_frame], dim=1)
-            pose_traj = torch.cat([pose_traj, next_pose], dim=1)
-
-        return action_traj, frame_traj
-
-    def select_topk_action_traj(final_state, goal_state, actions):
-        """Get the topk action trajectories that bring us closest to goal"""
-        sims = objective(final_state.flatten(1), goal_state.flatten(1))
-        indices = sims.topk(topk, largest=False).indices
-        selected_actions = actions[indices]
-        return selected_actions
-
-    for step in tqdm(range(cem_steps), disable=True):
-        action_traj, frame_traj = sample_action_traj()
-        selected_actions = select_topk_action_traj(
-            final_state=frame_traj[:, -1], goal_state=goal_frame, actions=action_traj
-        )
-        mean_selected_actions = selected_actions.mean(dim=0)
-        std_selected_actions = selected_actions.std(dim=0)
-
-        # -- Update new sampling mean and std based on the top-k samples
-        mean = torch.cat(
-            [
-                mean_selected_actions[..., :3] * (1.0 - momentum_mean) + mean[..., :3] * momentum_mean,
-                mean_selected_actions[..., -1:] * (1.0 - momentum_mean_gripper)
-                + mean[..., -1:] * momentum_mean_gripper,
-            ],
-            dim=-1,
-        )
-        std = torch.cat(
-            [
-                std_selected_actions[..., :3] * (1.0 - momentum_std) + std[..., :3] * momentum_std,
-                std_selected_actions[..., -1:] * (1.0 - momentum_std_gripper) + std[..., -1:] * momentum_std_gripper,
-            ],
-            dim=-1,
-        )
-
-        logger.info(f"new mean: {mean.sum(dim=0)} {std.sum(dim=0)}")
-
-    new_action = torch.cat(
-        [
-            mean[..., :3],
-            torch.zeros((rollout, 3), device=mean.device),
-            round_small_elements(mean[..., -1:], 0.25),
-        ],
-        dim=-1,
-    )[None, :]
-
-    return new_action
-
-
 def compute_new_pose(pose, action):
     """
     :param pose: [B, T=1, 7]
@@ -224,3 +86,150 @@ def poses_to_diff(start, end):
 
     action = np.concatenate([xyz_diff, theta_diff, gripper_diff], axis=0)
     return torch.from_numpy(action)
+
+def cem(
+    context_frame,
+    context_pose,
+    goal_frame,
+    world_model,
+    rollout=1,
+    cem_steps=100,
+    momentum_mean=0.25,
+    momentum_std=0.95,
+    momentum_mean_gripper=0.15,
+    momentum_std_gripper=0.15,
+    samples=100,
+    topk=10,
+    verbose=False,
+    maxnorm=0.05,
+    axis={},
+    objective=l1,
+    close_gripper=None,
+):
+    """
+    :param context_frame: [B=1, T=1, HW, D]
+    :param goal_frame: [B=1, T=1, HW, D]
+    :param world_model: f(context_frame, action) -> next_frame [B, 1, HW, D]
+    :return: [B=1, rollout, 7] an action trajectory over rollout horizon
+
+    Cross-Entropy Method
+    -----------------------
+    1. for rollout horizon:
+    1.1. sample several actions
+    1.2. compute next states using WM
+    3. compute similarity of final states to goal_frames
+    4. select topk samples and update mean and std using topk action trajs
+    5. choose final action to be mean of distribution
+    """
+
+    def sample_action_traj():
+        """Sample several action trajectories"""
+        # pass h_current, s_current
+        action_traj, frame_traj, pose_traj = None, context_frame, context_pose
+
+        for h in range(rollout):
+
+            # sample new one-step candidate action from gaussian distribution
+            action_samples = torch.randn(samples, mean.size(1), device=mean.device) * std[h] + mean[h]
+            action_samples[:, :3] = torch.clip(action_samples[:, :3], min=-maxnorm, max=maxnorm)
+            action_samples[:, -1:] = torch.clip(action_samples[:, -1:], min=-0.75, max=0.75)
+            for ax in axis.keys():
+                action_samples[:, ax] = axis[ax]
+            action_samples = torch.cat(
+                [
+                    action_samples[:, :3],
+                    torch.zeros((len(action_samples), 3), device=mean.device),
+                    action_samples[:, -1:],
+                ],
+                dim=-1,
+            )[:, None]
+            if close_gripper is not None and h >= close_gripper:
+                action_samples[:, :, -1] = 1.0
+
+            # concatenate action to ACTION TRAJ
+            action_traj = (
+                torch.cat([action_traj, action_samples], dim=1) if action_traj is not None else action_samples
+            )
+
+            # predict next observation embedding and pose with vjepa-ac model
+            next_frame, next_pose = world_model(frame_traj, action_traj, pose_traj)
+
+            # concatenate to trajectory
+            frame_traj = torch.cat([frame_traj, next_frame], dim=1)
+            pose_traj = torch.cat([pose_traj, next_pose], dim=1)
+
+        return action_traj, frame_traj
+
+    def select_topk_action_traj(final_state, goal_state, actions):
+        """Get the topk action trajectories that bring us closest to goal"""
+        sims = objective(final_state.flatten(1), goal_state.flatten(1))
+        indices = sims.topk(topk, largest=False).indices
+        selected_actions = actions[indices]
+        return selected_actions
+
+    # INPUTS
+    context_frame = context_frame.repeat(samples, 1, 1, 1)  # Reshape to [S, 1, HW, D]
+    goal_frame = goal_frame.repeat(samples, 1, 1, 1)  # Reshape to [S, 1, HW, D]
+    context_pose = context_pose.repeat(samples, 1, 1)  # Reshape to [S, 1, 7]
+
+    # Current estimate of the mean/std of distribution over action trajectories
+    mean = torch.cat(
+        [
+            torch.zeros((rollout, 3), device=context_frame.device),
+            torch.zeros((rollout, 1), device=context_frame.device),
+        ],
+        dim=-1,
+    )
+
+    std = torch.cat(
+        [
+            torch.ones((rollout, 3), device=context_frame.device) * maxnorm,
+            torch.ones((rollout, 1), device=context_frame.device),
+        ],
+        dim=-1,
+    )
+
+    for ax in axis.keys():
+        mean[:, ax] = axis[ax]
+
+    for step in tqdm(range(cem_steps), disable=True):
+
+        # samples action traj and predicts new frame embeddings
+        action_traj, frame_traj = sample_action_traj()
+
+        # compute l1 distance between final frame and goal frame
+        selected_actions = select_topk_action_traj(
+            final_state=frame_traj[:, -1], goal_state=goal_frame, actions=action_traj
+        )
+        mean_selected_actions = selected_actions.mean(dim=0)
+        std_selected_actions = selected_actions.std(dim=0)
+
+        # -- Update new sampling mean and std based on the top-k samples
+        mean = torch.cat(
+            [
+                mean_selected_actions[..., :3] * (1.0 - momentum_mean) + mean[..., :3] * momentum_mean,
+                mean_selected_actions[..., -1:] * (1.0 - momentum_mean_gripper)
+                + mean[..., -1:] * momentum_mean_gripper,
+            ],
+            dim=-1,
+        )
+        std = torch.cat(
+            [
+                std_selected_actions[..., :3] * (1.0 - momentum_std) + std[..., :3] * momentum_std,
+                std_selected_actions[..., -1:] * (1.0 - momentum_std_gripper) + std[..., -1:] * momentum_std_gripper,
+            ],
+            dim=-1,
+        )
+
+        logger.info(f"new mean: {mean.sum(dim=0)} {std.sum(dim=0)}")
+
+    new_action = torch.cat(
+        [
+            mean[..., :3],
+            torch.zeros((rollout, 3), device=mean.device),
+            round_small_elements(mean[..., -1:], 0.25),
+        ],
+        dim=-1,
+    )[None, :]
+
+    return new_action
