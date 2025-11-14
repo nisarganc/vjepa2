@@ -31,7 +31,7 @@ warnings.filterwarnings("ignore")
 
 # INITIALIZATIONS
 # read current observation at 4fps with resolution 256 * 256
-cap = cv2.VideoCapture(7)
+cap = cv2.VideoCapture(2)
 cap.set(cv2.CAP_PROP_FPS, 4)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 256)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 256)
@@ -43,7 +43,7 @@ robot = Fr3Hw(gripper=gripper,
               open_viewer=False) # Use your robot's IP
 # robot = FR3Twin() # simulation
 
-# reset robot to home position
+# reset robot to a position
 # pose = np.array([
 #     [1, 0, 0, 0.3],
 #     [0, -1, 0, 0.0],
@@ -53,11 +53,11 @@ robot = Fr3Hw(gripper=gripper,
 # robot.move(pose, cartesian=False)
 # exit()
 
-# gen goal observation
-_, frame = cap.read()
-frame = cv2.resize(frame, (256, 256))
-cv2.imwrite("./UTN_GoalImages/goal_observation_air_kinect.png", frame)
-exit()
+# # gen goal observation
+# _, frame = cap.read()
+# frame = cv2.resize(frame, (256, 256))
+# cv2.imwrite("./UTN_GoalImages/goal_observation_air_kinect.png", frame)
+# exit()
 
 # VJEPA 2-AC model initialization
 encoder, predictor = torch.hub.load("../", # root of the source code 
@@ -117,8 +117,7 @@ while i < 10:
     # read current observation
     _, frame = cap.read()
     frame = cv2.resize(frame, (256, 256))
-    # cv2.imwrite("./UTN_GoalImages/goal_observation_2.png", frame)
-    # exit()
+
     current_obs = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     # get current state from the robot
