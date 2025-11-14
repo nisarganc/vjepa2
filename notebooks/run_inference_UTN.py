@@ -9,7 +9,7 @@ from scipy.spatial.transform import Rotation as R
 
 # robot imports
 from net_franky import setup_net_franky
-setup_net_franky("localhost", 18813)
+setup_net_franky("multihead.utn-ai.de", 18813) #localhost
 from simple_move.robot.hw_bot.fr3_hw import Fr3Hw
 # from simple_move.robot.twin_bot.fr3_sim import FR3Twin # simulation
 from simple_move_fixtures.grippers import FinrayGripper, TactoGripper
@@ -29,10 +29,9 @@ warnings.filterwarnings("ignore")
 
 
 
-
 # INITIALIZATIONS
 # read current observation at 4fps with resolution 256 * 256
-cap = cv2.VideoCapture(4)
+cap = cv2.VideoCapture(7)
 cap.set(cv2.CAP_PROP_FPS, 4)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 256)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 256)
@@ -43,6 +42,22 @@ robot = Fr3Hw(gripper=gripper,
               ip="192.168.100.1", 
               open_viewer=False) # Use your robot's IP
 # robot = FR3Twin() # simulation
+
+# reset robot to home position
+# pose = np.array([
+#     [1, 0, 0, 0.3],
+#     [0, -1, 0, 0.0],
+#     [0, 0, -1, 0.5],
+#     [0, 0, 0, 1],
+# ])
+# robot.move(pose, cartesian=False)
+# exit()
+
+# gen goal observation
+_, frame = cap.read()
+frame = cv2.resize(frame, (256, 256))
+cv2.imwrite("./UTN_GoalImages/goal_observation_air_kinect.png", frame)
+exit()
 
 # VJEPA 2-AC model initialization
 encoder, predictor = torch.hub.load("../", # root of the source code 
@@ -76,7 +91,7 @@ world_model = WorldModel(
     # Doing very few CEM iterations with very few samples just to run efficiently on CPU...
     # ... increase cem_steps and samples for more accurate optimization of energy landscape
     mpc_args={
-        "rollout": 4, # ROLL-OUT HORIZON
+        "rollout": 2, # ROLL-OUT HORIZON
         "samples": 25,
         "topk": 10,
         "cem_steps": 2,
@@ -91,70 +106,63 @@ world_model = WorldModel(
     device="cuda"
 )
 
-
-
-
-# INFERENCE LOOP    
-# read current observation
-_, frame = cap.read()
-frame = cv2.resize(frame, (256, 256))
-# cv2.imwrite("./UTN_GoalImages/goal_observation_2.png", frame)
-# exit()
-current_obs = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-# get current state from the robot
-state = robot.get_cartesian_state()
-state = np.hstack((state[0:3, 3], # position
-                   R.from_matrix(state[0:3, 0:3]).as_euler('xyz'), # orientation
-                   robot.gripper.width # gripper width
-                   )).reshape(1, 7)
-# convert to tensors
-current_state = torch.tensor(state, dtype=torch.float32).unsqueeze(1) # [1, 1, 7]
-
 # read goal image from "./UTN_GoalImages/goal_observation.png" and pass it to world model
-goal_img = cv2.imread("./UTN_GoalImages/goal_observation.png")
+goal_img = cv2.imread("./UTN_GoalImages/goal_observation_air_kinect.png")
 goal_img = cv2.cvtColor(goal_img, cv2.COLOR_BGR2RGB)
 z_goal = world_model.encode(goal_img) # [1, 256, 1408]
 
-# run inference to get next action
-with torch.no_grad():
-    # Pre-trained VJEPA 2 ENCODER representation of current frame and goal frame
-    z_n = world_model.encode(current_obs) # [1, 256, 1408]
+i = 0
+# INFERENCE LOOP
+while i < 10:    
+    # read current observation
+    _, frame = cap.read()
+    frame = cv2.resize(frame, (256, 256))
+    # cv2.imwrite("./UTN_GoalImages/goal_observation_2.png", frame)
+    # exit()
+    current_obs = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # current observed state
-    s_n = current_state # [1, 1, 7]
+    # get current state from the robot
+    state = robot.get_cartesian_state()
+    state = np.hstack((state[0:3, 3], # position
+                    R.from_matrix(state[0:3, 0:3]).as_euler('xyz'), # orientation
+                    robot.gripper.width # gripper width
+                    )).reshape(1, 7)
+    # convert to tensors
+    current_state = torch.tensor(state, dtype=torch.float32).unsqueeze(1) # [1, 1, 7]
 
-    # to device
-    s_n = s_n.to(world_model.device)
+    # run inference to get next action
+    with torch.no_grad():
+        # Pre-trained VJEPA 2 ENCODER representation of current frame and goal frame
+        z_n = world_model.encode(current_obs) # [1, 256, 1408]
 
-    print(f"Starting planning using Cross-Entropy Method...")
+        # current observed state
+        s_n = current_state # [1, 1, 7]
 
-    # Action conditioned predictor and zero-shot action inference with CEM
-    actions = world_model.infer_next_action(z_n, s_n, z_goal)
+        # to device
+        s_n = s_n.to(world_model.device)
 
-# 4 x 7
-print(f"Actions returned by planning with CEM: {actions}, shape: {actions.shape}")
+        # Action conditioned predictor and zero-shot action inference with CEM
+        actions = world_model.infer_next_action(z_n, s_n, z_goal)
 
+    # EXECUTE THE ACTIONS RETURNED BY CEM
+    # convert to state changes
+    next_pose = current_state
+    for i in range(actions.shape[0]):
+        action = actions[i].unsqueeze(0).unsqueeze(0) # 1 x 1 x 7
+        next_pose = compute_new_pose(next_pose[:, -1:], action[:, -1:])
 
+    next_pose = next_pose[0].cpu().numpy() # 1 x 7
+    pose_without_gripper = next_pose[0, :-1]  # 6,
+    gripper_width = next_pose[0, -1]  # 1,
 
-# EXECUTE THE ACTIONS RETURNED BY CEM
-# convert to state changes
-next_pose = current_state
-for i in range(actions.shape[0]):
-    action = actions[i].unsqueeze(0).unsqueeze(0) # 1 x 1 x 7
-    next_pose = compute_new_pose(next_pose[:, -1:], action[:, -1:])
+    # convert to pose matrix
+    rotation = R.from_euler('xyz', pose_without_gripper[3:]).as_matrix()
+    trans_rot = np.hstack((rotation, 
+                    np.array(pose_without_gripper[:3]).reshape(3, 1)))
+    pose = np.vstack((trans_rot, 
+                    np.array([0, 0, 0, 1])))
 
-next_pose = next_pose[0].cpu().numpy() # 1 x 7
-pose_without_gripper = next_pose[0, :-1]  # 6,
-gripper_width = next_pose[0, -1]  # 1,
-
-# convert to pose matrix
-rotation = R.from_euler('xyz', pose_without_gripper[3:]).as_matrix()
-trans_rot = np.hstack((rotation, 
-                np.array(pose_without_gripper[:3]).reshape(3, 1)))
-pose = np.vstack((trans_rot, 
-                  np.array([0, 0, 0, 1])))
-
-# execute action
-robot.move(pose, cartesian=False)  # can switch to cartesian=True 
-robot.set_gripper(0.1 * gripper_width)  # TODO: set gripper width
+    # execute action
+    robot.move(pose, cartesian=False)  # can switch to cartesian=True 
+    robot.set_gripper(0.08 * gripper_width)  # TODO: set gripper width
+    i += 1
