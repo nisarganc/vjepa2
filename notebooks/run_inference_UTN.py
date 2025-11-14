@@ -50,6 +50,10 @@ encoder, predictor = torch.hub.load("../", # root of the source code
                                     source="local",
                                     pretrained=True) 
 
+# check if model weights are loaded on cuda
+encoder.to("cuda")
+predictor.to("cuda")                             
+
 # Initialize transform (random-resize-crop augmentations)
 crop_size = 256
 tokens_per_frame = int((crop_size // encoder.patch_size) ** 2)
@@ -84,7 +88,7 @@ world_model = WorldModel(
         "verbose": True
     },
     normalize_reps=True,
-    device="cpu"
+    device="cuda"
 )
 
 
@@ -120,10 +124,13 @@ with torch.no_grad():
     # current observed state
     s_n = current_state # [1, 1, 7]
 
+    # to device
+    s_n = s_n.to(world_model.device)
+
     print(f"Starting planning using Cross-Entropy Method...")
 
     # Action conditioned predictor and zero-shot action inference with CEM
-    actions = world_model.infer_next_action(z_n, s_n, z_goal).cpu().numpy()
+    actions = world_model.infer_next_action(z_n, s_n, z_goal)
 
 # 4 x 7
 print(f"Actions returned by planning with CEM: {actions}, shape: {actions.shape}")
@@ -133,8 +140,6 @@ print(f"Actions returned by planning with CEM: {actions}, shape: {actions.shape}
 # EXECUTE THE ACTIONS RETURNED BY CEM
 # convert to state changes
 next_pose = current_state
-actions = torch.tensor(actions, 
-                       dtype=torch.float32) # 4 x 7
 for i in range(actions.shape[0]):
     action = actions[i].unsqueeze(0).unsqueeze(0) # 1 x 1 x 7
     next_pose = compute_new_pose(next_pose[:, -1:], action[:, -1:])
