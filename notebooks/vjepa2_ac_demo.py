@@ -74,8 +74,8 @@ def forward_actions(z, nsamples, grid_size=0.075, normalize_reps=True, action_re
 
 def loss_fn(z, h):
     z, h = z[:, -tokens_per_frame:], h[:, -tokens_per_frame:]
-    loss = torch.abs(z - h)  # [B, N, D] i.e., [125, 256, 1408]
-    loss = torch.mean(loss, dim=[1, 2])
+    loss = torch.abs(z - h)  # [B, Patches, D] i.e., [125, 256, 1408]
+    loss = torch.mean(loss, dim=[1, 2]) # B, 1
     return loss.tolist() # [n] i.e., 125
 
 if __name__ == "__main__":

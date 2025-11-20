@@ -1,21 +1,33 @@
-Fix cam port on AIR
+Vjepa Encoder:
 
-check doid EE coordinates and gripper offset 
+1. Why does UTN dataset have 6k frames with 5fps?
+2. Investigate Loss on droid data
+
+- - - - - - - - - - - - - - - - - - - 
+Robot Inference;
+
+1. Fix cam port on AIR
+
+2. check doid EE coordinates and gripper offset 
     - check if implementation of ee state and gripper state matches with it
 
-Fix observation reading in lab from cameras (same pos as droid, resolution, etc)
+3. Fix observation reading in lab from cameras (same pos as droid, resolution, etc)
     - resolution: 256  x 256
     - frame-rate: 4 fps
 
-Run v-jepa-ac action inference until goal_image state is reached
+4. Run v-jepa-ac action inference until goal_image state is reached
     - closed-loop model-predictive control
 
-create apptainer sif with git creds
+5. create apptainer sif with git creds to download simple_move
 
-   -   -   -   -   -   -   -   -   -
+- - - - - - - - - - - - - - - - - - - 
 
-Learn -m pdb commands 
+-m pdb commands 
+
+- - - - - - - - - - - - - - - - - - - 
 
 apptainer shell v-jepa2.sif
 . /opt/conda/etc/profile.d/conda.sh
 conda activate vjepa-312
+
+- - - - - - - - - - - - - - - - - - - 
