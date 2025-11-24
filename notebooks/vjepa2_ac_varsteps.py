@@ -32,7 +32,7 @@ def loss_fn(z, z_bar):
     plt.imshow(loss_mean.squeeze().cpu().numpy().reshape(16, 16))
     plt.colorbar()
     plt.title("Per-token absolute difference loss")
-    plt.savefig("per_token_loss_0_step_droid.png")
+    plt.savefig("./Exp_results/droid/per_token_loss_30_step_droid.png")
     
     return
 
@@ -71,13 +71,13 @@ if __name__ == "__main__":
     print(f"Randomly sampled index: {random_index}")
     random_index = 130  # for reproducibility
         
-    # # Visualize start and goal video frames from traj
-    # plt.figure(figsize=(20, 3))
-    # _ = plt.imshow(
-    #     np.transpose(np_clips[0, [random_index-2,random_index], :, :, :], 
-    #     (1, 0, 2, 3)).reshape(H, W * 2, 3))
-    # plt.savefig("start_goal_frames_droid.png")
-    # plt.close() 
+    # Visualize start and goal video frames from traj
+    plt.figure(figsize=(20, 3))
+    _ = plt.imshow(
+        np.transpose(np_clips[0, [random_index-30,random_index], :, :, :], 
+        (1, 0, 2, 3)).reshape(H, W * 2, 3))
+    plt.savefig("start_goal_frames_droid_30.png")
+    plt.close() 
 
     # VJEPA 2-AC model initialization
     encoder, predictor = torch.hub.load("../", # root of the source code 
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     
 
     # CURRENT OBSERVATION AND STATE
-    current_img = np_clips[0, random_index] # [256, 256, 3]
+    current_img = np_clips[0, random_index-30] # [256, 256, 3]
     # current_state = np_states[0, random_index-2] # [7,]
 
     # convert to tensors
