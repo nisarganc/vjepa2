@@ -1,3 +1,7 @@
+export TF_FORCE_GPU_ALLOW_GROWTH=true
+
+- - - - - - - - - - - - - - - - - - - 
+
 Vjepa Encoder:
 
 1. Why does UTN dataset have 6k frames with 5fps?

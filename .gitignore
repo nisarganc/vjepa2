@@ -34,3 +34,6 @@ configs/local
 # nisarga's
 v-jepa2.sif
 checkpoints/
+
+# dataset
+inspect.ipynb
