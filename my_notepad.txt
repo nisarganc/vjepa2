@@ -1,16 +1,34 @@
-export TF_FORCE_GPU_ALLOW_GROWTH=true
+
+
+Training @helma-apptainer:
+
+apptainer shell vjepa2.sif
+. /opt/conda/etc/profile.d/conda.sh
+conda activate vjepa-312
+
+
+1. Fix def file to add git creds to download simple_move
+2. add to requirement file: lerobot @ git+https://github.com/huggingface/lerobot@0cf864870cf29f4738d3ade893e6fd13fbd7cdb5
 
 - - - - - - - - - - - - - - - - - - - 
 
-Vjepa Encoder:
+Dataset inference on AIR-Tower:
 
-1. Why does UTN dataset have 6k frames with 5fps?
-2. Investigate Loss on droid data
+Droid:
+    1. export TF_FORCE_GPU_ALLOW_GROWTH=true
+    2. load full episode for inference using droid dataset loader
+
+UTN:
+    1. check cem params
+    2. plot inference results
+    2. compare action cordinates and gripper conventions with droid
 
 - - - - - - - - - - - - - - - - - - - 
-Robot Inference;
 
-1. Fix cam port on AIR
+Run robot inference on AIR-Tower
+
+
+1. Fix cam port in run_inference_UTN.py
 
 2. check doid EE coordinates and gripper offset 
     - check if implementation of ee state and gripper state matches with it
@@ -19,19 +37,7 @@ Robot Inference;
     - resolution: 256  x 256
     - frame-rate: 4 fps
 
-4. Run v-jepa-ac action inference until goal_image state is reached
+4. Run pretrained v-jepa-ac action inference until goal_image state is reached
     - closed-loop model-predictive control
-
-5. create apptainer sif with git creds to download simple_move
-
-- - - - - - - - - - - - - - - - - - - 
-
--m pdb commands 
-
-- - - - - - - - - - - - - - - - - - - 
-
-apptainer shell v-jepa2.sif
-. /opt/conda/etc/profile.d/conda.sh
-conda activate vjepa-312
 
 - - - - - - - - - - - - - - - - - - - 

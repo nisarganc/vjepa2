@@ -23,18 +23,8 @@ from utils.datasets_utils import load_parquet_episode, load_droid_episode
 import warnings
 warnings.filterwarnings("ignore")
 
-def loss_fn(z, z_bar):
-
-    loss = torch.abs(z[0] - z_bar[0])  # [patches, D] i.e., [256, 1408]
-    loss_mean = torch.mean(loss, dim=1, keepdim=True)  # [patches, 1] i.e., [256, 1]
-
-    # plot 256-dim loss as 16x16 image
-    plt.imshow(loss_mean.squeeze().cpu().numpy().reshape(16, 16))
-    plt.colorbar()
-    plt.title("Per-token absolute difference loss")
-    plt.savefig("./Exp_results/droid/per_token_loss_30_step_droid.png")
-    
-    return
+# make tensor printing human-readable (no scientific notation, 4 decimals)
+torch.set_printoptions(precision=4, sci_mode=False)
 
 
 if __name__ == "__main__":
@@ -43,15 +33,14 @@ if __name__ == "__main__":
     play_in_reverse = False  
 
     # Load UTN parquet episode
-    # np_clips, np_states, np_actions = load_parquet_episode()
-    # H = 256
-    # W = 256
-    
+    np_clips, np_states, np_actions = load_parquet_episode()
+    H = 256
+    W = 256
 
-    # Load DROID dataset
-    np_clips, np_states, np_actions = load_droid_episode()
-    H = 180
-    W = 320
+    # # Load DROID dataset
+    # np_clips, np_states, np_actions = load_droid_episode()
+    # H = 180
+    # W = 320
 
     if play_in_reverse:
         np_clips = np_clips[:, ::-1].copy()
@@ -64,19 +53,24 @@ if __name__ == "__main__":
 
     print(f"np_clips shape: {np_clips.shape}, np_states shape: {np_states.shape}, np_actions shape: {np_actions.shape}")
     
-    # randomly sample a state from last 1/4 of the trajectory
-    random_index = np.random.randint(
-                            max(0, len(np_clips[0]) - len(np_clips[0]) // 4), 
-                            len(np_clips[0]))
-    print(f"Randomly sampled index: {random_index}")
-    random_index = 130  # for reproducibility
+    # # randomly sample a state from last 1/4 of the trajectory
+    # random_index = np.random.randint(
+    #                         max(0, len(np_clips[0]) - len(np_clips[0]) // 4), 
+    #                         len(np_clips[0]))
+    # print(f"Randomly sampled index: {random_index}")
+
+    # for reproducibility
+    goal = 24
+    current = goal - 4
+    print(f"Goal index: {goal}")
+    print(f"Current index: {current}")
         
     # Visualize start and goal video frames from traj
     plt.figure(figsize=(20, 3))
     _ = plt.imshow(
-        np.transpose(np_clips[0, [random_index-30,random_index], :, :, :], 
+        np.transpose(np_clips[0, [current, goal], :, :, :], 
         (1, 0, 2, 3)).reshape(H, W * 2, 3))
-    plt.savefig("start_goal_frames_droid_30.png")
+    plt.savefig("start_goal_frames.png")
     plt.close() 
 
     # VJEPA 2-AC model initialization
@@ -111,7 +105,7 @@ if __name__ == "__main__":
         # Doing very few CEM iterations with very few samples just to run efficiently on CPU...
         # ... increase cem_steps and samples for more accurate optimization of energy landscape
         mpc_args={
-            "rollout": 1, # ROLL-OUT HORIZON
+            "rollout": 4, # ROLL-OUT HORIZON
             "samples": 25,
             "topk": 10,
             "cem_steps": 1,
@@ -126,18 +120,16 @@ if __name__ == "__main__":
         device="cuda"
     )
 
-    # GOAL
-    goal_image = np_clips[0, random_index] # [256, 256, 3]
-    print(f"Goal image shape: {goal_image.shape}")
+    # GOAL OBSERVATION
+    goal_image = np_clips[0, goal] # [256, 256, 3]
     
 
     # CURRENT OBSERVATION AND STATE
-    current_img = np_clips[0, random_index-30] # [256, 256, 3]
-    # current_state = np_states[0, random_index-2] # [7,]
+    current_img = np_clips[0, current] # [256, 256, 3]
+    current_state = np_states[:, current, :] # [1, 7]
 
-    # convert to tensors
-    # current_state = torch.tensor(current_state, dtype=torch.float32).unsqueeze(1) # [1, 1, 7]
-
+    # GROUND TRUTH ACTIONS FROM current TO goal
+    gt_actions = torch.tensor(np_actions[0, current:goal, :], dtype=torch.float32) # [1, rollout, 7]
 
     with torch.no_grad():
 
@@ -146,14 +138,18 @@ if __name__ == "__main__":
         
         z_n = world_model.encode(current_img) # [1, 256, 1408]
 
-        # abs diff loss
-        loss_fn(z_n, z_goal)
-
-        # current observed state
-        # s_n = current_state # [1, 1, 7]
+        # current observed state and to tensor
+        s_n = current_state[np.newaxis, ...] # [1, 1, 7]
+        s_n = torch.tensor(s_n, dtype=torch.float32)
 
         # to device
-        # s_n = s_n.to(world_model.device)
+        s_n = s_n.to(world_model.device)
 
         # Action conditioned predictor and zero-shot action inference with CEM
-        # actions = world_model.infer_next_action(z_n, s_n, z_goal)
+        actions = world_model.infer_next_action(z_n, s_n, z_goal)
+
+        print(f"Predicted action: {actions.cpu()}")
+        print(f"Ground truth action: {gt_actions}")
+
+        
+

@@ -20,8 +20,7 @@ def load_parquet_episode():
     "Returns UTN episode numpy arrays" 
     
     # Load LeRobot format UTN dataset
-    # TODO: change path to one episode file
-    DATASET_PATH = '/home/abut37yx/RCSToolBox/extracted_dataset/data/chunk-000'
+    DATASET_PATH = '/home/abut37yx/RCSToolBox/extracted_dataset/data/chunk-000/episode_000132.parquet'
     PARTITIONING = ds.partitioning(
                     schema=pa.schema([pa.field("uuid", pa.binary(36))]), 
                     flavor="filename")
@@ -89,3 +88,16 @@ def load_droid_episode():
     del dataset, builder
 
     return np_clips, np_states, np_actions
+
+def loss_fn(z, z_bar, path):
+
+    loss = torch.abs(z[0] - z_bar[0])  # [patches, D] i.e., [256, 1408]
+    loss_mean = torch.mean(loss, dim=1, keepdim=True)  # [patches, 1] i.e., [256, 1]
+
+    # plot 256-dim loss as 16x16 image
+    plt.imshow(loss_mean.squeeze().cpu().numpy().reshape(16, 16))
+    plt.colorbar()
+    plt.title("Per-token absolute difference loss")
+    plt.savefig(f"{path}/per_token_loss.png")
+    
+    return

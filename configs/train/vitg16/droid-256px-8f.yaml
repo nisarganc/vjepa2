@@ -1,9 +1,14 @@
 app: vjepa_droid
 cpus_per_task: 12
-folder: /your_folder/droid/4.8.vitg16-256px-8f
+
+# output folder
+folder: /hnvme/workspace/v106be10-vjepa2/keyframe_exp/droid/
+
 mem_per_gpu: 220G
 nodes: 4
 tasks_per_node: 8
+
+# DATA
 data:
   batch_size: 8
   camera_views:
@@ -32,6 +37,8 @@ data_aug:
   - 1.777
   - 1.777
   reprob: 0.0
+
+# TRAINING
 loss:
   auto_steps: 2
   loss_exp: 1.0
@@ -40,7 +47,7 @@ loss:
 meta:
   dtype: bfloat16
   eval_freq: 100
-  resume_checkpoint: null
+  resume_checkpoint: null # /hnvme/workspace/v106be10-vjepa2/keyframe_exp/droid/latest.pt
   load_predictor: false
   pretrain_checkpoint: /your_vjepa2_checkpoints/vitg.pt
   context_encoder_key: target_encoder
@@ -48,6 +55,8 @@ meta:
   save_every_freq: 25
   seed: 239
   use_sdpa: true
+
+# MODEL
 model:
   model_name: vit_giant_xformers
   pred_depth: 24
