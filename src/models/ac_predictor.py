@@ -51,6 +51,7 @@ class VisionTransformerPredictorAC(nn.Module):
 
         # Map input to predictor dimension
         self.predictor_embed = nn.Linear(embed_dim, predictor_embed_dim, bias=True)
+        # TODO: from nn.leanear to beast
         self.action_encoder = nn.Linear(action_embed_dim, predictor_embed_dim, bias=True)
         self.state_encoder = nn.Linear(action_embed_dim, predictor_embed_dim, bias=True)
         self.extrinsics_encoder = nn.Linear(action_embed_dim - 1, predictor_embed_dim, bias=True)

@@ -84,7 +84,7 @@ def get_json(directory):
                 print(f"An unexpected error occurred while processing {filename}: {e}")
 
 
-class DROIDVideoDataset(torch.utils.data.Dataset):
+class DROIDVideoDataset_Keyframe(torch.utils.data.Dataset):
     """Video classification dataset."""
 
     def __init__(
@@ -100,7 +100,7 @@ class DROIDVideoDataset(torch.utils.data.Dataset):
         self.data_path = data_path
         self.frames_per_clip = frames_per_clip
         self.frameskip = frameskip
-        self.fps = fps
+        self.fps = fps # TODO: sample variable fps
         self.transform = transform
         self.camera_frame = camera_frame
         if VideoReader is None:

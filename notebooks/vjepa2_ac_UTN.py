@@ -128,8 +128,11 @@ if __name__ == "__main__":
     current_img = np_clips[0, current] # [256, 256, 3]
     current_state = np_states[:, current, :] # [1, 7]
 
-    # GROUND TRUTH ACTIONS FROM current TO goal
-    gt_actions = torch.tensor(np_actions[0, current:goal, :], dtype=torch.float32) # [1, rollout, 7]
+    # GROUND TRUTH ACTIONS AND STATES FOR COMPARISON
+    gt_actions = torch.tensor(np_actions[0, current:goal, :], dtype=torch.float32) # [rollout, 7]
+    gt_state = torch.tensor(np_states[0, current:goal, :], dtype=torch.float32) # [rollout, 7]
+
+    print("current state:", current_state)
 
     with torch.no_grad():
 
@@ -148,8 +151,9 @@ if __name__ == "__main__":
         # Action conditioned predictor and zero-shot action inference with CEM
         actions = world_model.infer_next_action(z_n, s_n, z_goal)
 
-        print(f"Predicted action: {actions.cpu()}")
-        print(f"Ground truth action: {gt_actions}")
+        # print(f"Predicted action: {actions.cpu()}")
+        # print(f"Ground truth action: {gt_actions}")
 
-        
-
+        print(f"Predicted new pose: {compute_new_pose(s_n, actions[0:1, :].unsqueeze(1))}")
+        # print(f"Ground truth new pose: {compute_new_pose(s_n, gt_actions[0:1, :].unsqueeze(1))}")
+        print(f"Ground truth next state: {gt_state[1:2, :]}")

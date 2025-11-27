@@ -221,7 +221,7 @@ def cem(
             dim=-1,
         )
 
-        logger.info(f"new mean: {mean.sum(dim=0)} {std.sum(dim=0)}")
+        # logger.info(f"new mean: {mean.sum(dim=0)} {std.sum(dim=0)}")
 
     new_action = torch.cat(
         [
