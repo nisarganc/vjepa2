@@ -28,7 +28,7 @@ UTN:
 Run robot inference on AIR-Tower
 
 
-1. Fix cam port in run_inference_UTN.py
+1. Fix cam port in vjepa2_ac_robotinference.py
 
 2. check doid EE coordinates and gripper offset 
     - check if implementation of ee state and gripper state matches with it

@@ -26,6 +26,12 @@ warnings.filterwarnings("ignore")
 # make tensor printing human-readable (no scientific notation, 4 decimals)
 torch.set_printoptions(precision=4, sci_mode=False)
 
+def count_params(model, trainable_only=False):
+    params = model.parameters()
+    if trainable_only:
+        params = (p for p in params if p.requires_grad)
+    return sum(p.numel() for p in params)
+
 
 if __name__ == "__main__":
 
@@ -81,7 +87,9 @@ if __name__ == "__main__":
 
     # check if model weights are loaded on cuda
     encoder.to("cuda")
-    predictor.to("cuda")                             
+    predictor.to("cuda") 
+    print("encoder params:", count_params(encoder))
+    print("decoder params:", count_params(predictor))
 
     # Initialize transform (random-resize-crop augmentations)
     crop_size = 256
@@ -149,7 +157,7 @@ if __name__ == "__main__":
         s_n = s_n.to(world_model.device)
 
         # Action conditioned predictor and zero-shot action inference with CEM
-        actions = world_model.infer_next_action(z_n, s_n, z_goal)
+        actions = world_model.infer_next_action(z_n, s_n, z_goal)   
 
         # print(f"Predicted action: {actions.cpu()}")
         # print(f"Ground truth action: {gt_actions}")

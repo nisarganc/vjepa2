@@ -20,7 +20,7 @@ def load_parquet_episode():
     "Returns UTN episode numpy arrays" 
     
     # Load LeRobot format UTN dataset
-    DATASET_PATH = '/home/abut37yx/RCSToolBox/extracted_dataset/data/chunk-000/episode_000132.parquet'
+    DATASET_PATH = 'episode_000132.parquet'
     PARTITIONING = ds.partitioning(
                     schema=pa.schema([pa.field("uuid", pa.binary(36))]), 
                     flavor="filename")
