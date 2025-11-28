@@ -34,3 +34,6 @@ configs/local
 # nisarga's
 vjepa2.sif
 checkpoints/
+
+# Ralf's
+data/

@@ -188,7 +188,7 @@ if __name__ == "__main__":
             "rollout": 2, # ROLL-OUT HORIZON
             "samples": 25,
             "topk": 10,
-            "cem_steps": 2,
+            "cem_steps": 5,
             "momentum_mean": 0.15,
             "momentum_mean_gripper": 0.15,
             "momentum_std": 0.75,

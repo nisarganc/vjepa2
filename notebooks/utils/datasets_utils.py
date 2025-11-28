@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import dlimp as dl
 
 # UTN dataset loading
 import pyarrow as pa
@@ -13,14 +12,15 @@ import io
 
 # DROID dataset loading
 import tensorflow_datasets as tfds
-import dlimp as dl
 import rlds
+from utils.dlimp_utils import DLataset
 
 def load_parquet_episode():   
     "Returns UTN episode numpy arrays" 
     
     # Load LeRobot format UTN dataset
-    DATASET_PATH = '/home/abut37yx/RCSToolBox/extracted_dataset/data/chunk-000/episode_000132.parquet'
+    # DATASET_PATH = '/home/abut37yx/RCSToolBox/extracted_dataset/data/chunk-000/episode_000132.parquet'
+    DATASET_PATH = '/home/ralf_roemer/Projects/vjepa2/data/episode_000132.parquet'
     PARTITIONING = ds.partitioning(
                     schema=pa.schema([pa.field("uuid", pa.binary(36))]), 
                     flavor="filename")
@@ -70,7 +70,7 @@ def load_droid_episode():
     "Returns droid episode numpy arrays"
 
     builder = tfds.builder_from_directory("/mnt/dataset_drive/OpenX_Embodiment/droid_100/1.0.0")
-    dataset = dl.DLataset.from_rlds(builder, split="train", shuffle=False, num_parallel_reads=1)
+    dataset = DLataset.from_rlds(builder, split="train", shuffle=False, num_parallel_reads=1)
     
     # print(builder.info.features) 
 

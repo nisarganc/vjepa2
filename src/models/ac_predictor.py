@@ -13,6 +13,7 @@ from src.models.utils.modules import ACBlock as Block
 from src.models.utils.modules import build_action_block_causal_attention_mask
 from src.utils.tensors import trunc_normal_
 
+from src.beast_tokenizer.beast import BeastTokenizer
 
 class VisionTransformerPredictorAC(nn.Module):
     """Action Conditioned Vision Transformer Predictor"""
@@ -43,6 +44,7 @@ class VisionTransformerPredictorAC(nn.Module):
         use_rope=True,
         action_embed_dim=7,
         use_extrinsics=False,
+        use_beast=False,
         **kwargs
     ):
         super().__init__()
@@ -52,7 +54,12 @@ class VisionTransformerPredictorAC(nn.Module):
         # Map input to predictor dimension
         self.predictor_embed = nn.Linear(embed_dim, predictor_embed_dim, bias=True)
         # TODO: from nn.leanear to beast
-        self.action_encoder = nn.Linear(action_embed_dim, predictor_embed_dim, bias=True)
+        if use_beast:
+            self.action_encoder = BeastTokenizer(
+                num_dof=action_embed_dim,
+            )
+        else:
+            self.action_encoder = nn.Linear(action_embed_dim, predictor_embed_dim, bias=True)
         self.state_encoder = nn.Linear(action_embed_dim, predictor_embed_dim, bias=True)
         self.extrinsics_encoder = nn.Linear(action_embed_dim - 1, predictor_embed_dim, bias=True)
 
