@@ -10,6 +10,8 @@ import pandas as pd
 import pyarrow.dataset as ds
 from PIL import Image
 import io
+import matplotlib.pyplot as plt
+import torch
 
 # DROID dataset loading
 import tensorflow_datasets as tfds
@@ -20,7 +22,7 @@ def load_parquet_episode():
     "Returns UTN episode numpy arrays" 
     
     # Load LeRobot format UTN dataset
-    DATASET_PATH = 'episode_000132.parquet'
+    DATASET_PATH = '/home/abut37yx/RCSToolBox/extracted_dataset/data/chunk-000/episode_000132.parquet'
     PARTITIONING = ds.partitioning(
                     schema=pa.schema([pa.field("uuid", pa.binary(36))]), 
                     flavor="filename")
@@ -88,6 +90,16 @@ def load_droid_episode():
     del dataset, builder
 
     return np_clips, np_states, np_actions
+
+def plot_start_goal_frames(np_clips, current, goal, H, W):
+    """ Plot start and goal frames from the episode. """
+
+    plt.figure(figsize=(20, 3))
+    _ = plt.imshow(
+        np.transpose(np_clips[0, [current, goal], :, :, :], 
+        (1, 0, 2, 3)).reshape(H, W * 2, 3))
+    plt.savefig("start_goal_frames.png")
+    plt.close() 
 
 def loss_fn(z, z_bar, path):
 

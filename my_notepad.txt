@@ -20,7 +20,7 @@ Droid:
 
 UTN:
     1. check cem params
-    2. plot inference results
+    2. check compute new pose against next states
     2. compare action cordinates and gripper conventions with droid
 
 - - - - - - - - - - - - - - - - - - - 
@@ -39,5 +39,22 @@ Run robot inference on AIR-Tower
 
 4. Run pretrained v-jepa-ac action inference until goal_image state is reached
     - closed-loop model-predictive control
+
+- - - - - - - - - - - - - - - - - - - 
+
+Next steps:
+1. Try key frame prediction with gemini: nano-banana
+2. Maybe finetune vjepa-ac on Droid with 16 fps (keep constant action chunking)
+2. Action chunking with 10 skipsteps
+3. Checkout NovaFlow paper 
+4. Title: zero shot manipulation with video and world models
+
+Tests:
+1. Check how sensitive the ac predictor is to the sub_goal_images
+2. Check also for human hand prediction?
+
+BootCamp:
+1. Try bi-manual dataset from Bootcamp
+2. Download slides
 
 - - - - - - - - - - - - - - - - - - - 
